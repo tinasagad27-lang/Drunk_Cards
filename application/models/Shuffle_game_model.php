@@ -1,34 +1,50 @@
 <?php
-defined('BASEPATH') OR exit('No direct script access allowed');
+defined('BASEPATH') or exit('No direct script access allowed');
 
-class Shuffle_game_model extends CI_Model {
+class Shuffle_game_model extends CI_Model
+{
 
-    public function getAllCards() {
+    public function getAllCards()
+    {
         return $this->db->get('cards')->result_array();
     }
 
-    public function insertCard($data) {
+    public function insertCard($data)
+    {
         $this->db->insert('cards', $data);
     }
 
-    public function deleteCard($id) {
+    public function deleteCard($id)
+    {
         $this->db->where('id', $id);
         $this->db->delete('cards');
     }
-    public function getShuffledCards($category) {
+
+    public function getCardById($id)
+    {
+        return $this->db->get_where('cards', ['id' => $id])->row_array();
+    }
+
+    public function updateCard($id, $data)
+    {
+        $this->db->where('id', $id);
+        $this->db->update('cards', $data);
+    }
+
+    public function getShuffledCards($category)
+    {
         $this->db->where('category', $category);
         $this->db->order_by('RAND()'); // Randomize the order
         return $this->db->get('cards')->result_array();
     }
     public function get_next_question($category)
-{
-    $this->db->where('category', $category);
-    $this->db->order_by('id', 'RANDOM'); // Fetch random question from the same category
-    $this->db->limit(1);
+    {
+        $this->db->where('category', $category);
+        $this->db->order_by('id', 'RANDOM'); // Fetch random question from the same category
+        $this->db->limit(1);
 
-    $query = $this->db->get('cards'); // Replace 'cards' with your actual table name
+        $query = $this->db->get('cards'); // Replace 'cards' with your actual table name
 
-    return $query->result_array();
-}
-
+        return $query->result_array();
+    }
 }

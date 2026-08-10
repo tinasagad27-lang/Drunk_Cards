@@ -22,19 +22,20 @@ class Shuffle_game_controller extends CI_Controller
     {
         $category = $this->input->post('category'); // Get the selected category
 
-        // Check if category is selected
         if (!$category) {
             redirect('shuffle_game_controller'); // Redirect if no category is selected
         }
 
-        // Load the model
-        $this->load->model('Shuffle_game_model');
+        $cards = $this->Shuffle_game_model->getShuffledCards($category);
 
-        // Fetch shuffled cards based on selected category
-        $data['cards'] = $this->Shuffle_game_model->getShuffledCards($category);
+        if (empty($cards)) {
+            redirect('shuffle_game_controller/gameover');
+        }
 
-        // Load the game view (play.php) and pass the shuffled cards
-        $this->load->view('shuffle_game/play', $data);
+        $this->session->set_userdata('shuffled_cards', $cards);
+        $this->session->set_userdata('current_index', 0);
+
+        redirect('shuffle_game_controller/play');
     }
 
     public function dashboard()
@@ -45,8 +46,12 @@ class Shuffle_game_controller extends CI_Controller
 
     public function play()
     {
-        $current_index = $this->session->userdata('current_index') ?? 0;
-        $cards = $this->session->userdata('shuffled_cards') ?? [];
+        $cards = $this->session->userdata('shuffled_cards');
+        $current_index = $this->session->userdata('current_index');
+
+        if (empty($cards) || $current_index === null) {
+            redirect('shuffle_game_controller');
+        }
 
         if ($current_index >= count($cards)) {
             redirect('shuffle_game_controller/gameover');
@@ -62,30 +67,52 @@ class Shuffle_game_controller extends CI_Controller
         }
 
         $data['card'] = $this->Shuffle_game_model->getCardById($id);
+
+        if (empty($data['card'])) {
+            redirect('admin_controller/dashboard');
+        }
+
         $this->load->view('shuffle_game/edit', $data);
     }
+
+    public function update($id)
+    {
+        if (!$this->session->userdata('admin_logged_in')) {
+            redirect('login');
+        }
+
+        $data = array(
+            'question' => $this->input->post('question'),
+            'category' => $this->input->post('category')
+        );
+
+        $this->Shuffle_game_model->updateCard($id, $data);
+        redirect('admin_controller/dashboard');
+    }
+
     public function next()
     {
-        $category = $this->input->post('category'); // Get the category from the form
+        $current_index = $this->session->userdata('current_index');
+        $cards = $this->session->userdata('shuffled_cards');
 
-        if (!$category) {
-            redirect('shuffle_game_controller'); // If no category, go back to category selection
+        if (empty($cards) || $current_index === null) {
+            redirect('shuffle_game_controller');
         }
 
-        // Fetch the next question from the same category
-        $cards = $this->Shuffle_game_model->get_next_question($category);
+        $current_index++;
+        $this->session->set_userdata('current_index', $current_index);
 
-        if (!empty($cards)) {
-            $data['cards'] = $cards;
-            $this->load->view('shuffle_game/play', $data); // Load the game view with new question
-        } else {
-            redirect('shuffle_game_controller/gameover'); // No more questions in category
+        if ($current_index >= count($cards)) {
+            redirect('shuffle_game_controller/gameover');
         }
+
+        redirect('shuffle_game_controller/play');
     }
 
 
     public function gameover()
     {
+        $this->session->unset_userdata(['shuffled_cards', 'current_index']);
         $this->load->view('shuffle_game/game_over');
     }
 
@@ -115,8 +142,12 @@ class Shuffle_game_controller extends CI_Controller
 
     public function delete($id)
     {
+        if (!$this->session->userdata('admin_logged_in')) {
+            redirect('login');
+        }
+
         $this->Shuffle_game_model->deleteCard($id);
-        redirect('shuffle_game_controller');
+        redirect('admin_controller/dashboard');
     }
 
     public function dare()
